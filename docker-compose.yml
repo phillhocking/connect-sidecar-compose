@@ -1,0 +1,87 @@
+version: '3.7'
+
+services:
+
+  consul-server:
+    image: hashicorp/consul:1.10.0
+    container_name: consul-server
+    restart: always
+    volumes:
+     - ./server.json:/consul/config/server.json:ro
+    networks:
+      consul:
+        ipv4_address: 172.24.0.2
+    ports:
+      - "8000:8000"
+      - "8500:8500"
+      - "8502:8502"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
+    command: "agent"
+
+  consul-client:
+    image: hashicorp/consul:1.10.0
+    container_name: consul-client
+    restart: always
+    volumes:
+     - ./client.json:/consul/config/client.json:ro
+    networks:
+      consul:
+        ipv4_address: 172.24.0.3
+    command: "agent"
+
+  redis:
+    image: "redis:alpine"
+    container_name: redis
+    restart: always
+    volumes:
+      - ./redis-data:/var/lib/redis
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+     - REDIS_REPLICATION_MODE=master
+    networks:
+      consul:
+        ipv4_address: 172.24.0.4
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+     - "6379:6379"
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: always
+    volumes: 
+      - ./html:/usr/share/nginx/html
+    networks:
+      consul:
+        ipv4_address: 172.24.0.5
+    ports:
+     - "8080:80"
+
+  redis-proxy:
+    image: "nicholasjackson/consul-envoy"
+    container_name: redis-proxy
+    restart: always
+    volumes: 
+      - ./config:/config
+    environment:
+      - CONSUL_HTTP_ADDR=172.24.0.2:8500
+      - CONSUL_GRPC_ADDR=172.24.0.2:8502
+      - SERVICE_CONFIG=/config/redis-proxy.json
+    command: consul connect envoy -sidecar-for redis
+    networks:
+      consul:
+        ipv4_address: 172.24.0.6
+    ports:
+     - "20000:20000"
+     - "21000:21000"
+     - "9091:9091"
+
+
+networks:
+  consul:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
+

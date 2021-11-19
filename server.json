@@ -1,0 +1,46 @@
+{
+    "node_name": "consul-server",
+    "server": true,
+    "bootstrap" : true,
+    "ui_config": {
+        "enabled" : true
+    },
+    "data_dir": "/consul/data",
+    "addresses": {
+        "http" : "0.0.0.0"
+    },
+    "ports": {
+        "grpc" : 8502
+    },
+    "connect": {
+        "enabled" : true
+    },
+    "enable_central_service_config" : true,
+    
+  "service": {
+    "id": "redis",
+    "name": "redis",
+    "address": "172.24.0.4",
+    "port": 6379,
+    "connect": {
+        "sidecar_service": {
+            "port": 20000,
+            "check": {
+                "name": "Redis Envoy Sidecar",
+                "tcp": "172.24.0.6:20000",
+                "interval": "10s"
+            },
+            "proxy": {
+                "upstreams": [
+                    {
+                    "destination_name": "redis",
+                    "local_bind_address": "127.0.0.1",
+              
+                    "local_bind_port": 9091
+                    }
+                ]
+            }
+        }
+    }
+  }
+}
